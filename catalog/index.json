@@ -1,0 +1,13 @@
+{
+  "name": "Planix Prime - Solo películas",
+  "version": "1.0.0",
+  "catalogType": "movies",
+  "totalParts": 1,
+  "totalMovies": 39546,
+  "parts": [
+    {
+      "file": "catalog/peliculas-001.txt",
+      "sizeBytes": 4445636
+    }
+  ]
+}

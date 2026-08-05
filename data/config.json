@@ -26,12 +26,19 @@
       "featured": false
     },
     {
-      "id": "familia",
-      "title": "Familia y animación",
-      "file": "data/sections/familia.json",
-      "type": "peliculas",
-      "featured": false
-    },
+  "id": "familia-parte-1",
+  "title": "Familia y animación",
+  "file": "data/sections/familia-parte-1.json",
+  "type": "peliculas",
+  "featured": false
+},
+{
+  "id": "familia-parte-2",
+  "title": "Más contenido familiar",
+  "file": "data/sections/familia-parte-2.json",
+  "type": "peliculas",
+  "featured": false
+}
     {
       "id": "terror",
       "title": "Terror y ciencia ficción",

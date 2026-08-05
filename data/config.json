@@ -59,6 +59,13 @@
       "file": "data/sections/navidad.json",
       "type": "peliculas",
       "featured": false
+    },
+    {
+  "id": "series",
+  "title": "Series",
+  "file": "data/sections/series.json",
+  "type": "series",
+  "featured": false
     }
   ]
 }

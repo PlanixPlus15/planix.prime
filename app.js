@@ -13,7 +13,7 @@
 
 const PLANIX_CONFIG = {
   configUrl: "data/config.json",
-  workerUrl: "worker.js",
+  workerUrl: "worker.js?v=21",
 
   searchMinimumCharacters: 2,
   searchLimit: 150,

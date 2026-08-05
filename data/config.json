@@ -1,0 +1,57 @@
+{
+  "name": "Planix Prime",
+  "version": "1.0.0",
+  "total": 245261,
+  "language": "es",
+  "sections": [
+    {
+      "id": "estrenos",
+      "title": "Estrenos",
+      "file": "data/sections/estrenos.json",
+      "type": "peliculas",
+      "featured": true
+    },
+    {
+      "id": "peliculas",
+      "title": "Películas",
+      "file": "data/sections/peliculas.json",
+      "type": "peliculas",
+      "featured": false
+    },
+    {
+      "id": "superheroes",
+      "title": "Superhéroes",
+      "file": "data/sections/superheroes.json",
+      "type": "peliculas",
+      "featured": false
+    },
+    {
+      "id": "familia",
+      "title": "Familia y animación",
+      "file": "data/sections/familia.json",
+      "type": "peliculas",
+      "featured": false
+    },
+    {
+      "id": "terror",
+      "title": "Terror y ciencia ficción",
+      "file": "data/sections/terror.json",
+      "type": "peliculas",
+      "featured": false
+    },
+    {
+      "id": "documentales",
+      "title": "Documentales",
+      "file": "data/sections/documentales.json",
+      "type": "peliculas",
+      "featured": false
+    },
+    {
+      "id": "navidad",
+      "title": "Navidad",
+      "file": "data/sections/navidad.json",
+      "type": "peliculas",
+      "featured": false
+    }
+  ]
+}

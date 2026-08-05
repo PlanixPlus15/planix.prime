@@ -1,9 +1,8 @@
 "use strict";
 
 /* =========================================================
-   PLANIX PRIME 2.0
-   Archivo: worker.js
-   Procesa, clasifica y busca el catálogo automáticamente
+   PLANIX PRIME 2.1
+   Clasificación correcta de películas y episodios
    ========================================================= */
 
 const catalog = [];
@@ -22,13 +21,13 @@ const categories = {
 
 
 /* =========================================================
-   RECIBIR INSTRUCCIONES DESDE app.js
+   RECIBIR MENSAJES
    ========================================================= */
 
 self.addEventListener("message", event => {
   const message = event.data;
 
-  if (!message || !message.type) {
+  if (!message?.type) {
     return;
   }
 
@@ -63,26 +62,20 @@ self.addEventListener("message", event => {
         message.offset
       );
       break;
-
-    default:
-      console.warn(
-        "Instrucción desconocida:",
-        message.type
-      );
   }
 });
 
 
 /* =========================================================
-   REINICIAR CATÁLOGO
+   REINICIAR
    ========================================================= */
 
 function resetCatalog() {
   catalog.length = 0;
   knownUrls.clear();
 
-  Object.keys(categories).forEach(category => {
-    categories[category].length = 0;
+  Object.values(categories).forEach(items => {
+    items.length = 0;
   });
 
   self.postMessage({
@@ -92,7 +85,7 @@ function resetCatalog() {
 
 
 /* =========================================================
-   PROCESAR CADA ARCHIVO TXT
+   PROCESAR TXT
    ========================================================= */
 
 function parseCatalogPart(
@@ -170,68 +163,247 @@ function parseCatalogPart(
 
 
 /* =========================================================
-   CREAR PELÍCULA NORMALIZADA
+   CREAR CONTENIDO
    ========================================================= */
 
 function createCatalogItem(title, url) {
   const normalizedTitle =
     normalizeText(title);
 
-  const year =
-    detectYear(title);
-
-  const format =
-    detectFormat(url);
+  const episodeData =
+    detectEpisodeData(title);
 
   const type =
-    detectContentType(
-      normalizedTitle,
-      url
-    );
+    episodeData.isEpisode
+      ? "serie"
+      : "pelicula";
 
   return {
     id: createId(url),
+
     title,
-    year,
-    category: "Películas",
+
+    year: detectYear(title),
+
+    category:
+      type === "serie"
+        ? "Series"
+        : "Películas",
+
     type,
-    format,
+
+    format: detectFormat(url),
+
     url,
 
     poster: "",
+
     background: "",
 
     description:
       "Disponible en Planix Prime.",
 
-    searchTitle: normalizedTitle
+    searchTitle:
+      normalizedTitle,
+
+    seriesName:
+      episodeData.seriesName,
+
+    season:
+      episodeData.season,
+
+    episode:
+      episodeData.episode
   };
 }
 
 
 /* =========================================================
-   CLASIFICAR AUTOMÁTICAMENTE
+   DETECTAR EPISODIOS
+   ========================================================= */
+
+function detectEpisodeData(title) {
+  const clean =
+    normalizeText(title);
+
+  let season = "";
+  let episode = "";
+
+  const compactMatch =
+    clean.match(
+      /\bs(\d{1,3})\s*e(\d{1,4})\b/
+    );
+
+  if (compactMatch) {
+    season =
+      String(
+        Number(compactMatch[1])
+      );
+
+    episode =
+      String(
+        Number(compactMatch[2])
+      );
+  }
+
+  const seasonMatch =
+    clean.match(
+      /\btemporada\s*(\d{1,3})\b/
+    ) ||
+    clean.match(
+      /\bseason\s*(\d{1,3})\b/
+    );
+
+  if (
+    seasonMatch &&
+    !season
+  ) {
+    season =
+      String(
+        Number(seasonMatch[1])
+      );
+  }
+
+  const episodeMatch =
+    clean.match(
+      /\bepisodio\s*(\d{1,4})\b/
+    ) ||
+    clean.match(
+      /\bcapitulo\s*(\d{1,4})\b/
+    ) ||
+    clean.match(
+      /\bepisode\s*(\d{1,4})\b/
+    );
+
+  if (
+    episodeMatch &&
+    !episode
+  ) {
+    episode =
+      String(
+        Number(episodeMatch[1])
+      );
+  }
+
+  const isEpisode =
+    Boolean(
+      compactMatch ||
+      seasonMatch ||
+      episodeMatch ||
+      /\btemporada\b/.test(clean) ||
+      /\bepisodio\b/.test(clean) ||
+      /\bcapitulo\b/.test(clean) ||
+      /\bseason\b/.test(clean) ||
+      /\bepisode\b/.test(clean)
+    );
+
+  const seriesName =
+    isEpisode
+      ? cleanSeriesName(title)
+      : "";
+
+  return {
+    isEpisode,
+    season,
+    episode,
+    seriesName
+  };
+}
+
+
+/* =========================================================
+   LIMPIAR NOMBRE DE SERIE
+   ========================================================= */
+
+function cleanSeriesName(title) {
+  return String(title)
+    .replace(
+      /\bs\d{1,3}\s*e\d{1,4}\b/gi,
+      ""
+    )
+    .replace(
+      /\btemporada\s*\d{0,3}\b/gi,
+      ""
+    )
+    .replace(
+      /\bseason\s*\d{0,3}\b/gi,
+      ""
+    )
+    .replace(
+      /\bepisodio\s*\d{0,4}\b/gi,
+      ""
+    )
+    .replace(
+      /\bcap[ií]tulo\s*\d{0,4}\b/gi,
+      ""
+    )
+    .replace(
+      /\bepisode\s*\d{0,4}\b/gi,
+      ""
+    )
+    .replace(
+      /\s+/g,
+      " "
+    )
+    .replace(
+      /[-–—:|]+$/g,
+      ""
+    )
+    .trim();
+}
+
+
+/* =========================================================
+   CLASIFICAR
    ========================================================= */
 
 function classifyItem(item) {
-  const title = item.searchTitle;
+  const title =
+    item.searchTitle;
+
+  /*
+    SERIES:
+    Todo título con temporada o episodio.
+  */
 
   if (item.type === "serie") {
-    item.category = "Series";
-    categories.series.push(item);
-  } else {
-    categories.peliculas.push(item);
+    categories.series.push({
+      ...item,
+      category: "Series"
+    });
+
+    return;
   }
 
+  /*
+    PELÍCULAS:
+    Solo títulos sin episodios.
+  */
+
+  categories.peliculas.push({
+    ...item,
+    category: "Películas"
+  });
+
+  /*
+    ESTRENOS:
+    Solo películas de 2025 o 2026.
+  */
+
   if (
-    item.year === "2026" ||
-    item.year === "2025"
+    item.year === "2025" ||
+    item.year === "2026"
   ) {
     categories.estrenos.push({
       ...item,
       category: "Estrenos"
     });
   }
+
+  /*
+    SUPERHÉROES:
+    Solo películas, nunca episodios.
+  */
 
   if (
     containsAny(title, [
@@ -274,6 +446,11 @@ function classifyItem(item) {
       category: "Superhéroes"
     });
   }
+
+  /*
+    FAMILIA Y ANIMACIÓN:
+    Solo películas.
+  */
 
   if (
     containsAny(title, [
@@ -327,9 +504,15 @@ function classifyItem(item) {
   ) {
     categories.familia.push({
       ...item,
-      category: "Familia y animación"
+      category:
+        "Familia y animación"
     });
   }
+
+  /*
+    TERROR:
+    Solo películas.
+  */
 
   if (
     containsAny(title, [
@@ -348,7 +531,6 @@ function classifyItem(item) {
       "exorcismo",
       "cementerio",
       "masacre",
-      "asesino",
       "fantasma",
       "sobrenatural"
     ])
@@ -359,6 +541,11 @@ function classifyItem(item) {
         "Terror y ciencia ficción"
     });
   }
+
+  /*
+    DOCUMENTALES:
+    Solo películas o documentales completos.
+  */
 
   if (
     containsAny(title, [
@@ -383,6 +570,11 @@ function classifyItem(item) {
     });
   }
 
+  /*
+    NAVIDAD:
+    Solo películas.
+  */
+
   if (
     containsAny(title, [
       "navidad",
@@ -402,45 +594,25 @@ function classifyItem(item) {
 
 
 /* =========================================================
-   DETECTAR SERIES
-   ========================================================= */
-
-function detectContentType(title, url) {
-  const cleanUrl =
-    normalizeText(url);
-
-  if (
-    /\bs\d{1,2}\s*e\d{1,3}\b/.test(title) ||
-    /\btemporada\b/.test(title) ||
-    /\bepisodio\b/.test(title) ||
-    /\bcapitulo\b/.test(title) ||
-    /\bseason\b/.test(title) ||
-    /\bepisode\b/.test(title) ||
-    /\/series\//.test(cleanUrl)
-  ) {
-    return "serie";
-  }
-
-  return "pelicula";
-}
-
-
-/* =========================================================
-   FINALIZAR EL PROCESAMIENTO
+   FINALIZAR
    ========================================================= */
 
 function finishCatalog() {
   sortCatalog(catalog);
 
   Object.values(categories).forEach(
-    categoryItems => {
-      removeCategoryDuplicates(
-        categoryItems
-      );
-
-      sortCatalog(categoryItems);
+    items => {
+      removeCategoryDuplicates(items);
+      sortCatalog(items);
     }
   );
+
+  const featured =
+    categories.estrenos[0] ||
+    categories.peliculas[0] ||
+    categories.series[0] ||
+    catalog[0] ||
+    null;
 
   self.postMessage({
     type: "CATALOG_READY",
@@ -473,16 +645,13 @@ function finishCatalog() {
         categories.navidad.length
     },
 
-    featured:
-      categories.estrenos[0] ||
-      catalog[0] ||
-      null
+    featured
   });
 }
 
 
 /* =========================================================
-   ENVIAR UNA CATEGORÍA
+   ENVIAR CATEGORÍA
    ========================================================= */
 
 function sendCategory(
@@ -509,24 +678,27 @@ function sendCategory(
       Number(requestedOffset) || 0
     );
 
-  const items =
-    source.slice(
-      offset,
-      offset + limit
-    );
-
   self.postMessage({
     type: "CATEGORY_RESULTS",
+
     category,
-    items,
-    total: source.length,
+
+    items:
+      source.slice(
+        offset,
+        offset + limit
+      ),
+
+    total:
+      source.length,
+
     offset
   });
 }
 
 
 /* =========================================================
-   MOTOR DE BÚSQUEDA
+   BÚSQUEDA
    ========================================================= */
 
 function searchCatalog(
@@ -615,7 +787,7 @@ function searchCatalog(
 
 
 /* =========================================================
-   CALCULAR COINCIDENCIA
+   PUNTUACIÓN DE BÚSQUEDA
    ========================================================= */
 
 function calculateSearchScore(
@@ -632,19 +804,11 @@ function calculateSearchScore(
     score += 1000;
   }
 
-  if (
-    title.startsWith(
-      completeQuery
-    )
-  ) {
+  if (title.startsWith(completeQuery)) {
     score += 600;
   }
 
-  if (
-    title.includes(
-      completeQuery
-    )
-  ) {
+  if (title.includes(completeQuery)) {
     score += 400;
   }
 
@@ -667,7 +831,7 @@ function calculateSearchScore(
 
 
 /* =========================================================
-   FUNCIONES DE APOYO
+   AYUDANTES
    ========================================================= */
 
 function cleanTitle(value) {
@@ -680,7 +844,10 @@ function cleanTitle(value) {
       /\s*-\s*\.PeliculasGoogleOne\.Net\.?/gi,
       ""
     )
-    .replace(/\s+/g, " ")
+    .replace(
+      /\s+/g,
+      " "
+    )
     .trim();
 }
 
@@ -745,7 +912,10 @@ function normalizeText(value) {
       /[^a-zA-Z0-9\s/.-]/g,
       " "
     )
-    .replace(/\s+/g, " ")
+    .replace(
+      /\s+/g,
+      " "
+    )
     .toLowerCase()
     .trim();
 }
@@ -766,16 +936,21 @@ function removeCategoryDuplicates(
   const seen = new Set();
 
   for (
-    let index = items.length - 1;
+    let index =
+      items.length - 1;
     index >= 0;
     index -= 1
   ) {
     if (
-      seen.has(items[index].id)
+      seen.has(
+        items[index].id
+      )
     ) {
       items.splice(index, 1);
     } else {
-      seen.add(items[index].id);
+      seen.add(
+        items[index].id
+      );
     }
   }
 }
@@ -790,11 +965,35 @@ function sortCatalog(items) {
         second.year || "0000";
 
       if (
-        secondYear !== firstYear
+        secondYear !==
+        firstYear
       ) {
         return secondYear.localeCompare(
           firstYear
         );
+      }
+
+      if (
+        first.seriesName &&
+        second.seriesName &&
+        first.seriesName ===
+          second.seriesName
+      ) {
+        const seasonDifference =
+          Number(first.season || 0) -
+          Number(second.season || 0);
+
+        if (seasonDifference !== 0) {
+          return seasonDifference;
+        }
+
+        const episodeDifference =
+          Number(first.episode || 0) -
+          Number(second.episode || 0);
+
+        if (episodeDifference !== 0) {
+          return episodeDifference;
+        }
       }
 
       return first.title.localeCompare(
@@ -815,10 +1014,14 @@ function sendPartProgress(
 ) {
   self.postMessage({
     type: "PART_PROCESSED",
+
     partNumber,
+
     totalParts,
+
     addedItems,
+
     catalogTotal:
       catalog.length
   });
-       }
+                                    }

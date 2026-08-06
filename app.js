@@ -634,4 +634,322 @@ async function playNative(url) {
       cleanup();
       reject(new Error("NATIVE_MEDIA_ERROR"));
     };
+    const timeout = window.setTimeout(() => {
+      cleanup();
+      reject(new Error("NATIVE_TIMEOUT"));
+    }, 15000);
 
+    function cleanup() {
+      window.clearTimeout(timeout);
+      video.removeEventListener("canplay", onReady);
+      video.removeEventListener("error", onError);
+    }
+
+    video.addEventListener("canplay", onReady, { once: true });
+    video.addEventListener("error", onError, { once: true });
+  });
+
+  hidePlayerLoading();
+  await video.play();
+}
+
+async function playHls(url) {
+  const video = elements.videoPlayer;
+
+  if (video.canPlayType("application/vnd.apple.mpegurl")) {
+    await playNative(url);
+    return;
+  }
+
+  if (!window.Hls || !window.Hls.isSupported()) {
+    throw new Error("HLS_NOT_SUPPORTED");
+  }
+
+  state.players.hls = new window.Hls({
+    enableWorker: true,
+    lowLatencyMode: false,
+    maxBufferLength: 30
+  });
+
+  const hls = state.players.hls;
+
+  await new Promise((resolve, reject) => {
+    const timeout = window.setTimeout(() => {
+      reject(new Error("HLS_TIMEOUT"));
+    }, 20000);
+
+    hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
+      window.clearTimeout(timeout);
+      resolve();
+    });
+
+    hls.on(window.Hls.Events.ERROR, (_event, data) => {
+      if (data.fatal) {
+        window.clearTimeout(timeout);
+        reject(new Error(`HLS_${data.type || "ERROR"}`));
+      }
+    });
+
+    hls.loadSource(url);
+    hls.attachMedia(video);
+  });
+
+  hidePlayerLoading();
+  await video.play();
+}
+
+async function playDash(url) {
+  if (!window.shaka) {
+    throw new Error("SHAKA_NOT_LOADED");
+  }
+
+  window.shaka.polyfill.installAll();
+
+  if (!window.shaka.Player.isBrowserSupported()) {
+    throw new Error("DASH_NOT_SUPPORTED");
+  }
+
+  state.players.shaka = new window.shaka.Player();
+  await state.players.shaka.attach(elements.videoPlayer);
+
+  state.players.shaka.addEventListener("error", event => {
+    console.error("Shaka error:", event.detail);
+  });
+
+  await state.players.shaka.load(url);
+  hidePlayerLoading();
+  await elements.videoPlayer.play();
+}
+
+async function playMpegTs(url, format) {
+  if (!window.mpegts || !window.mpegts.isSupported()) {
+    throw new Error("MPEGTS_NOT_SUPPORTED");
+  }
+
+  state.players.mpegts = window.mpegts.createPlayer(
+    {
+      type: format === "flv" ? "flv" : "mpegts",
+      isLive: false,
+      url
+    },
+    {
+      enableWorker: true,
+      lazyLoad: false
+    }
+  );
+
+  const player = state.players.mpegts;
+  player.attachMediaElement(elements.videoPlayer);
+  player.load();
+
+  await new Promise((resolve, reject) => {
+    const timeout = window.setTimeout(() => {
+      reject(new Error("MPEGTS_TIMEOUT"));
+    }, 20000);
+
+    player.on(window.mpegts.Events.MEDIA_INFO, () => {
+      window.clearTimeout(timeout);
+      resolve();
+    });
+
+    player.on(window.mpegts.Events.ERROR, () => {
+      window.clearTimeout(timeout);
+      reject(new Error("MPEGTS_ERROR"));
+    });
+  });
+
+  hidePlayerLoading();
+  await player.play();
+}
+
+async function destroyActivePlayers() {
+  const video = elements.videoPlayer;
+
+  if (state.players.hls) {
+    state.players.hls.destroy();
+    state.players.hls = null;
+  }
+
+  if (state.players.shaka) {
+    try {
+      await state.players.shaka.destroy();
+    } catch (_) {}
+    state.players.shaka = null;
+  }
+
+  if (state.players.mpegts) {
+    try {
+      state.players.mpegts.pause();
+      state.players.mpegts.unload();
+      state.players.mpegts.detachMediaElement();
+      state.players.mpegts.destroy();
+    } catch (_) {}
+    state.players.mpegts = null;
+  }
+
+  video.pause();
+  video.removeAttribute("src");
+  video.load();
+}
+
+async function closePlayer() {
+  saveCurrentProgress();
+  await destroyActivePlayers();
+
+  elements.playerModal.hidden = true;
+  document.body.classList.remove("modal-open");
+
+  hidePlayerError();
+  hidePlayerLoading();
+}
+
+function showPlayerLoading(message) {
+  elements.playerLoadingText.textContent = message;
+  elements.playerLoading.hidden = false;
+  elements.playerError.hidden = true;
+}
+
+function hidePlayerLoading() {
+  elements.playerLoading.hidden = true;
+}
+
+function hidePlayerError() {
+  elements.playerError.hidden = true;
+  elements.playerErrorMessage.textContent = "";
+}
+
+function showPlayerErrorFor(content, error) {
+  hidePlayerLoading();
+
+  const format = detectPlaybackFormat(content);
+  let title = "No se pudo reproducir";
+  let message = "El enlace no respondiÃ³ o el servidor bloqueÃ³ la reproducciÃ³n.";
+
+  if (format === "mkv" || format === "avi") {
+    title = "Formato no compatible";
+    message =
+      "Este archivo es MKV o AVI. Chrome solo lo abrirÃ¡ si sus cÃ³decs internos son compatibles. " +
+      "Para garantizar reproducciÃ³n web debe convertirse o remultiplexarse a MP4 o HLS.";
+  } else if (String(error?.message || "").includes("HLS")) {
+    message =
+      "La seÃ±al HLS no cargÃ³. Puede estar caÃ­da, bloqueada por CORS o requerir autorizaciÃ³n.";
+  } else if (String(error?.message || "").includes("DASH") ||
+             String(error?.message || "").includes("SHAKA")) {
+    message =
+      "La seÃ±al DASH/MPD no pudo cargarse o el navegador no la admite.";
+  } else if (String(error?.message || "").includes("MPEGTS")) {
+    message =
+      "El archivo TS/FLV no pudo reproducirse. Puede faltar CORS o el flujo no es compatible.";
+  }
+
+  elements.playerErrorTitle.textContent = title;
+  elements.playerErrorMessage.textContent = message;
+  elements.playerError.hidden = false;
+}
+
+function retryPlayer() {
+  if (state.selectedContent) {
+    openPlayer(state.selectedContent);
+  }
+}
+
+/* =========================================================
+   INFORMACIÃ“N, FAVORITOS Y PROGRESO
+   ========================================================= */
+
+function openInformation(content) {
+  state.selectedContent = content;
+
+  elements.informationTitle.textContent = content.title;
+  elements.informationMetadata.textContent = [
+    content.year,
+    content.category,
+    content.format
+  ].filter(Boolean).join(" Â· ");
+  elements.informationDescription.textContent =
+    content.description || "Disponible en Planix Prime.";
+
+  const background = content.background || content.poster || "";
+  elements.informationBackground.style.backgroundImage =
+    background ? `url("${background}")` : "";
+
+  elements.informationModal.hidden = false;
+  document.body.classList.add("modal-open");
+
+  updateFavoriteButtons(content);
+}
+
+function closeInformation() {
+  elements.informationModal.hidden = true;
+  document.body.classList.remove("modal-open");
+}
+
+function toggleFavorite(content) {
+  if (!content) return;
+
+  if (state.favorites.has(content.id)) {
+    state.favorites.delete(content.id);
+    showToast("Eliminado de Mi lista.");
+  } else {
+    state.favorites.add(content.id);
+    showToast("Agregado a Mi lista.");
+  }
+
+  localStorage.setItem(
+    "planixFavorites",
+    JSON.stringify(Array.from(state.favorites))
+  );
+
+  updateFavoriteButtons(content);
+  refreshVisibleCards();
+}
+
+function updateFavoriteButtons(content) {
+  if (!content) return;
+
+  const isFavorite = state.favorites.has(content.id);
+
+  elements.heroFavoriteButton.textContent =
+    isFavorite ? "â™¥ En mi lista" : "â™¡ Mi lista";
+  elements.playerFavoriteButton.textContent =
+    isFavorite ? "Quitar de Mi lista" : "Agregar a Mi lista";
+  elements.informationFavoriteButton.textContent =
+    isFavorite ? "Quitar de Mi lista" : "Agregar a Mi lista";
+}
+
+function refreshVisibleCards() {
+  document.querySelectorAll(".content-card").forEach(card => {
+    const id = card.dataset.contentId;
+    const poster = card.querySelector(".card-poster");
+    const existingFavorite = card.querySelector(".card-favorite");
+    const isFavorite = state.favorites.has(id);
+
+    if (isFavorite && !existingFavorite) {
+      const favorite = document.createElement("span");
+      favorite.className = "card-favorite";
+      favorite.textContent = "â™¥";
+      poster?.appendChild(favorite);
+    }
+
+    if (!isFavorite && existingFavorite) {
+      existingFavorite.remove();
+    }
+  });
+}
+
+function saveCurrentProgress() {
+  const content = state.selectedContent;
+  const player = elements.videoPlayer;
+
+  if (
+    !content ||
+    !Number.isFinite(player.currentTime) ||
+    !Number.isFinite(player.duration) ||
+    player.duration <= 0
+  ) {
+    return;
+  }
+
+  if (player.currentTime >= player.duration - 30) {
+    delete state.continueWatching[content.id];
+  } else if (player.currentTime > 10) {

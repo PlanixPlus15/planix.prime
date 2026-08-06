@@ -953,3 +953,322 @@ function saveCurrentProgress() {
   if (player.currentTime >= player.duration - 30) {
     delete state.continueWatching[content.id];
   } else if (player.currentTime > 10) {
+    state.continueWatching[content.id] = {
+      content,
+      currentTime: player.currentTime,
+      duration: player.duration,
+      updatedAt: Date.now()
+    };
+  }
+
+  localStorage.setItem(
+    "planixContinueWatching",
+    JSON.stringify(state.continueWatching)
+  );
+
+  renderContinueWatching();
+}
+
+function renderContinueWatching() {
+  const items = Object.values(state.continueWatching)
+    .sort((first, second) => second.updatedAt - first.updatedAt)
+    .slice(0, PLANIX_CONFIG.continueWatchingLimit);
+
+  elements.continueWatchingRow.innerHTML = "";
+
+  if (!items.length) {
+    elements.continueWatchingSection.hidden = true;
+    return;
+  }
+
+  elements.continueWatchingSection.hidden = false;
+
+  for (const progress of items) {
+    if (!progress.content) continue;
+
+    elements.continueWatchingRow.appendChild(
+      createContentCard(progress.content, { continueWatching: true })
+    );
+  }
+}
+
+/* =========================================================
+   BÃšSQUEDA Y NAVEGACIÃ“N
+   ========================================================= */
+
+function handleSearchInput() {
+  const query = elements.searchInput.value.trim();
+  elements.clearSearchButton.hidden = query.length === 0;
+
+  clearTimeout(state.searchTimer);
+  state.searchTimer = window.setTimeout(() => performSearch(query), 280);
+}
+
+function performSearch(query) {
+  if (query.length < PLANIX_CONFIG.searchMinimumCharacters) {
+    hideSearchResults();
+    return;
+  }
+
+  if (!state.catalogReady) {
+    showToast("Espera a que termine de cargar el catÃ¡logo.");
+    return;
+  }
+
+  elements.fullCategorySection.hidden = true;
+  elements.catalogSections.hidden = false;
+
+  state.worker.postMessage({
+    type: "SEARCH",
+    query,
+    limit: PLANIX_CONFIG.searchLimit
+  });
+}
+
+function renderSearchResults(results, total) {
+  elements.searchResultsGrid.innerHTML = "";
+  elements.searchResultsSection.hidden = false;
+  elements.searchResultCounter.textContent =
+    `${Number(total).toLocaleString("es-ES")} resultados`;
+  elements.emptyState.hidden = results.length > 0;
+
+  for (const content of results) {
+    elements.searchResultsGrid.appendChild(createContentCard(content));
+  }
+
+  elements.searchResultsSection.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+}
+
+function hideSearchResults() {
+  elements.searchResultsSection.hidden = true;
+  elements.searchResultsGrid.innerHTML = "";
+  elements.emptyState.hidden = true;
+}
+
+function clearSearch() {
+  elements.searchInput.value = "";
+  elements.clearSearchButton.hidden = true;
+  hideSearchResults();
+  elements.searchInput.focus();
+}
+
+function changeSection(sectionId) {
+  state.activeSection = sectionId;
+
+  elements.navigationButtons.forEach(button => {
+    button.classList.toggle(
+      "active",
+      button.dataset.section === sectionId
+    );
+  });
+
+  if (sectionId === "inicio") {
+    closeFullCategory();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+
+  if (sectionId === "favoritos") {
+    showFavorites();
+    return;
+  }
+
+  const sectionConfig = state.config.sections.find(
+    section => section.id === sectionId
+  );
+
+  if (sectionConfig) {
+    openFullCategory(sectionConfig.id, sectionConfig.title);
+  } else {
+    showToast("Esta secciÃ³n todavÃ­a no tiene contenido.");
+  }
+}
+
+function showFavorites() {
+  const favorites = [];
+
+  for (const items of state.categoryResults.values()) {
+    for (const content of items) {
+      if (
+        state.favorites.has(content.id) &&
+        !favorites.some(item => item.id === content.id)
+      ) {
+        favorites.push(content);
+      }
+    }
+  }
+
+  elements.fullCategorySection.hidden = true;
+  elements.catalogSections.hidden = false;
+  elements.searchResultsSection.hidden = false;
+  elements.searchResultsGrid.innerHTML = "";
+  elements.searchResultCounter.textContent = `${favorites.length} favoritos`;
+  elements.emptyState.hidden = favorites.length > 0;
+
+  for (const content of favorites) {
+    elements.searchResultsGrid.appendChild(createContentCard(content));
+  }
+
+  elements.searchResultsSection.scrollIntoView({ behavior: "smooth" });
+}
+
+function restoreLocalData() {
+  try {
+    state.favorites = new Set(
+      JSON.parse(localStorage.getItem("planixFavorites") || "[]")
+    );
+
+    state.continueWatching = JSON.parse(
+      localStorage.getItem("planixContinueWatching") || "{}"
+    );
+  } catch (error) {
+    console.warn("No se pudieron restaurar los datos locales.", error);
+    state.favorites = new Set();
+    state.continueWatching = {};
+  }
+}
+
+/* =========================================================
+   EVENTOS
+   ========================================================= */
+
+function registerEvents() {
+  elements.navigationButtons.forEach(button => {
+    button.addEventListener("click", () => {
+      changeSection(button.dataset.section);
+    });
+  });
+
+  elements.searchInput.addEventListener("input", handleSearchInput);
+  elements.clearSearchButton.addEventListener("click", clearSearch);
+
+  elements.heroPlayButton.addEventListener("click", () => {
+    openPlayer(state.featuredContent);
+  });
+
+  elements.heroInfoButton.addEventListener("click", () => {
+    openInformation(state.featuredContent);
+  });
+
+  elements.heroFavoriteButton.addEventListener("click", () => {
+    toggleFavorite(state.featuredContent);
+  });
+
+  elements.closePlayerButton.addEventListener("click", closePlayer);
+  elements.retryPlayerButton.addEventListener("click", retryPlayer);
+
+  elements.closeInformationButton.addEventListener(
+    "click",
+    closeInformation
+  );
+
+  elements.informationPlayButton.addEventListener("click", () => {
+    const content = state.selectedContent;
+    closeInformation();
+    openPlayer(content);
+  });
+
+  elements.playerFavoriteButton.addEventListener("click", () => {
+    toggleFavorite(state.selectedContent);
+  });
+
+  elements.informationFavoriteButton.addEventListener("click", () => {
+    toggleFavorite(state.selectedContent);
+  });
+
+  elements.backToHomeButton.addEventListener("click", closeFullCategory);
+  elements.loadMoreCategoryButton.addEventListener(
+    "click",
+    loadMoreFullCategory
+  );
+
+  elements.videoPlayer.addEventListener("waiting", () => {
+    showPlayerLoading("Cargando reproducciÃ³n...");
+  });
+
+  elements.videoPlayer.addEventListener("playing", hidePlayerLoading);
+  elements.videoPlayer.addEventListener("pause", saveCurrentProgress);
+  elements.videoPlayer.addEventListener(
+    "timeupdate",
+    debounce(saveCurrentProgress, 5000)
+  );
+
+  elements.videoPlayer.addEventListener("ended", () => {
+    if (state.selectedContent) {
+      delete state.continueWatching[state.selectedContent.id];
+
+      localStorage.setItem(
+        "planixContinueWatching",
+        JSON.stringify(state.continueWatching)
+      );
+
+      renderContinueWatching();
+    }
+  });
+
+  elements.playerModal.addEventListener("click", event => {
+    if (event.target.classList.contains("modal-backdrop")) {
+      closePlayer();
+    }
+  });
+
+  elements.informationModal.addEventListener("click", event => {
+    if (event.target.classList.contains("modal-backdrop")) {
+      closeInformation();
+    }
+  });
+
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+      if (!elements.playerModal.hidden) closePlayer();
+      if (!elements.informationModal.hidden) closeInformation();
+      if (!elements.fullCategorySection.hidden) closeFullCategory();
+    }
+  });
+}
+
+/* =========================================================
+   AYUDANTES
+   ========================================================= */
+
+async function fetchJSON(url) {
+  const response = await fetch(url, { cache: "no-store" });
+
+  if (!response.ok) {
+    throw new Error(`No se pudo cargar ${url}. Estado ${response.status}`);
+  }
+
+  return response.json();
+}
+
+function updateLoading(message, percentage) {
+  elements.loadingMessage.textContent = message;
+  elements.loadingProgressBar.style.width =
+    `${Math.max(0, Math.min(100, percentage))}%`;
+}
+
+function showToast(message) {
+  elements.toast.textContent = message;
+  elements.toast.classList.add("show");
+
+  clearTimeout(showToast.timer);
+
+  showToast.timer = window.setTimeout(() => {
+    elements.toast.classList.remove("show");
+  }, PLANIX_CONFIG.toastDuration);
+}
+
+function debounce(callback, delay) {
+  let timer;
+
+  return (...argumentsList) => {
+    clearTimeout(timer);
+
+    timer = window.setTimeout(() => {
+      callback(...argumentsList);
+    }, delay);
+  };
+}

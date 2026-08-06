@@ -1582,3 +1582,101 @@ input:focus-visible {
   }
 
 }
+
+/* =========================================================
+   PLANIX PRIME 3.0 - AÃ±adir al FINAL de style.css
+   ========================================================= */
+
+.section-heading-actions {
+  align-items: center;
+}
+
+.section-heading-actions > div {
+  min-width: 0;
+}
+
+.section-heading-actions > div span {
+  display: block;
+  margin-top: 4px;
+}
+
+.view-all-button {
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  padding: 8px 13px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.view-all-button:hover {
+  border-color: var(--planix-cyan);
+  color: var(--planix-cyan);
+}
+
+.full-category-section {
+  min-height: calc(100vh - var(--topbar-height));
+  padding-top: 32px;
+}
+
+.full-category-toolbar {
+  margin-bottom: 22px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.full-category-toolbar h2 {
+  margin: 0 0 4px;
+  font-size: clamp(26px, 4vw, 40px);
+}
+
+.full-category-toolbar span {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.load-more-container {
+  padding: 32px 0 18px;
+  display: flex;
+  justify-content: center;
+}
+
+.player-error {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 13px;
+  background: rgba(0, 0, 0, 0.88);
+  color: #ffffff;
+  text-align: center;
+}
+
+.player-error strong {
+  font-size: clamp(22px, 4vw, 34px);
+}
+
+.player-error span {
+  max-width: 650px;
+  color: #cfd3dc;
+  line-height: 1.55;
+}
+
+@media (max-width: 700px) {
+  .full-category-toolbar {
+    align-items: flex-start;
+  }
+
+  .full-category-toolbar .secondary-button {
+    min-width: 90px;
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+}

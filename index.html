@@ -2,551 +2,216 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-
-  <meta
-    http-equiv="Content-Type"
-    content="text/html; charset=UTF-8"
-  >
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, viewport-fit=cover"
-  >
-
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#08090d">
-
-  <meta
-    name="description"
-    content="Planix Prime, plataforma de entretenimiento para películas, series y televisión."
-  >
-
+  <meta name="description" content="Planix Prime, catÃ¡logo web de pelÃ­culas.">
   <title>Planix Prime</title>
 
-  <!-- Más adelante crearemos estos archivos -->
-  <link rel="stylesheet" href="style.css">
-  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="style.css?v=40">
+
+  <!-- Reproductores -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.13/dist/hls.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/shaka-player@5.2.3/dist/shaka-player.compiled.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.8.0/dist/mpegts.min.js"></script>
 </head>
 
 <body>
-
-  <!-- BARRA SUPERIOR -->
   <header class="topbar">
-
     <a class="brand" href="#" aria-label="Inicio de Planix Prime">
-      <div class="brand-logo" aria-hidden="true">
-        P+
-      </div>
-
-      <div class="brand-name">
-        Planix <strong>Prime</strong>
-      </div>
+      <div class="brand-logo" aria-hidden="true">P+</div>
+      <div class="brand-name">Planix <strong>Prime</strong></div>
     </a>
 
-    <!-- MENÚ PRINCIPAL -->
-    <nav class="main-navigation" aria-label="Navegación principal">
-
-      <button
-        class="nav-button active"
-        type="button"
-        data-section="inicio"
-      >
-        Inicio
-      </button>
-
-      <button
-        class="nav-button"
-        type="button"
-        data-section="peliculas"
-      >
-        Películas
-      </button>
-
-      <button
-        class="nav-button"
-        type="button"
-        data-section="series"
-      >
-        Series
-      </button>
-
-      <button
-        class="nav-button"
-        type="button"
-        data-section="tv"
-      >
-        TV en vivo
-      </button>
-
-      <button
-        class="nav-button"
-        type="button"
-        data-section="favoritos"
-      >
-        Mi lista
-      </button>
-
+    <nav class="main-navigation" aria-label="NavegaciÃ³n principal">
+      <button class="nav-button active" type="button" data-section="inicio">Inicio</button>
+      <button class="nav-button" type="button" data-section="peliculas">PelÃ­culas</button>
+      <button class="nav-button" type="button" data-section="estrenos">Estrenos</button>
+      <button class="nav-button" type="button" data-section="favoritos">Mi lista</button>
     </nav>
 
-    <!-- BUSCADOR -->
     <div class="search-container">
-
-      <label class="sr-only" for="searchInput">
-        Buscar contenido
-      </label>
-
-      <input
-        id="searchInput"
-        class="search-input"
-        type="search"
-        placeholder="Buscar películas y series..."
-        autocomplete="off"
-      >
-
-      <button
-        id="clearSearchButton"
-        class="clear-search-button"
-        type="button"
-        aria-label="Borrar búsqueda"
-        hidden
-      >
-        ×
-      </button>
-
+      <label class="sr-only" for="searchInput">Buscar contenido</label>
+      <input id="searchInput" class="search-input" type="search"
+             placeholder="Buscar pelÃ­culas..." autocomplete="off">
+      <button id="clearSearchButton" class="clear-search-button"
+              type="button" aria-label="Borrar bÃºsqueda" hidden>Ã—</button>
     </div>
-
   </header>
 
-
-  <!-- CONTENIDO PRINCIPAL -->
   <main id="app">
-
-    <!-- PORTADA DESTACADA -->
-    <section
-      id="heroSection"
-      class="hero-section"
-      aria-labelledby="heroTitle"
-    >
-
-      <div
-        id="heroBackground"
-        class="hero-background"
-        aria-hidden="true"
-      ></div>
-
+    <section id="heroSection" class="hero-section" aria-labelledby="heroTitle">
+      <div id="heroBackground" class="hero-background" aria-hidden="true"></div>
       <div class="hero-overlay"></div>
 
       <div class="hero-content">
-
-        <p class="hero-kicker">
-          PLANIX PRIME
-        </p>
-
-        <h1 id="heroTitle">
-          El entretenimiento comienza aquí
-        </h1>
-
+        <p class="hero-kicker">PLANIX PRIME</p>
+        <h1 id="heroTitle">El entretenimiento comienza aquÃ­</h1>
         <p id="heroDescription" class="hero-description">
-          Descubre películas, series y contenido seleccionado
-          desde una experiencia moderna y fácil de usar.
+          CatÃ¡logo web de pelÃ­culas con reproducciÃ³n automÃ¡tica segÃºn el formato.
         </p>
 
         <div class="hero-information">
-
-          <span id="heroYear" class="information-pill">
-            Catálogo
-          </span>
-
-          <span id="heroCategory" class="information-pill">
-            Entretenimiento
-          </span>
-
-          <span id="catalogCounter" class="information-pill">
-            Cargando contenido...
-          </span>
-
+          <span id="heroYear" class="information-pill">CatÃ¡logo</span>
+          <span id="heroCategory" class="information-pill">PelÃ­culas</span>
+          <span id="catalogCounter" class="information-pill">Cargando contenido...</span>
         </div>
 
         <div class="hero-actions">
-
-          <button
-            id="heroPlayButton"
-            class="primary-button"
-            type="button"
-            disabled
-          >
-            <span aria-hidden="true">▶</span>
-            Reproducir
+          <button id="heroPlayButton" class="primary-button" type="button" disabled>
+            <span aria-hidden="true">â–¶</span> Reproducir
           </button>
-
-          <button
-            id="heroInfoButton"
-            class="secondary-button"
-            type="button"
-            disabled
-          >
-            Más información
+          <button id="heroInfoButton" class="secondary-button" type="button" disabled>
+            MÃ¡s informaciÃ³n
           </button>
-
-          <button
-            id="heroFavoriteButton"
-            class="secondary-button"
-            type="button"
-            disabled
-          >
+          <button id="heroFavoriteButton" class="secondary-button" type="button" disabled>
             Mi lista
           </button>
-
         </div>
-
       </div>
-
     </section>
 
-
-    <!-- ESTADO DE CARGA -->
-    <section
-      id="loadingSection"
-      class="loading-section"
-      aria-live="polite"
-    >
-
+    <section id="loadingSection" class="loading-section" aria-live="polite">
       <div class="loading-spinner" aria-hidden="true"></div>
-
-      <p id="loadingMessage">
-        Preparando Planix Prime...
-      </p>
-
+      <p id="loadingMessage">Preparando Planix Prime...</p>
       <div class="loading-progress">
-        <div
-          id="loadingProgressBar"
-          class="loading-progress-bar"
-        ></div>
+        <div id="loadingProgressBar" class="loading-progress-bar"></div>
       </div>
-
     </section>
 
-
-    <!-- RESULTADOS DE BÚSQUEDA -->
-    <section
-      id="searchResultsSection"
-      class="catalog-section"
-      hidden
-    >
-
+    <section id="searchResultsSection" class="catalog-section" hidden>
       <div class="section-heading">
-
-        <h2>
-          Resultados de búsqueda
-        </h2>
-
-        <span id="searchResultCounter">
-          0 resultados
-        </span>
-
+        <h2>Resultados de bÃºsqueda</h2>
+        <span id="searchResultCounter">0 resultados</span>
       </div>
-
-      <div
-        id="searchResultsGrid"
-        class="content-grid"
-      ></div>
-
+      <div id="searchResultsGrid" class="content-grid"></div>
     </section>
 
+    <!-- Vista completa de una categorÃ­a -->
+    <section id="fullCategorySection" class="catalog-section full-category-section" hidden>
+      <div class="full-category-toolbar">
+        <button id="backToHomeButton" class="secondary-button" type="button">â† Volver</button>
+        <div>
+          <h2 id="fullCategoryTitle">PelÃ­culas</h2>
+          <span id="fullCategoryCounter">0 tÃ­tulos</span>
+        </div>
+      </div>
 
-    <!-- CONTINUAR VIENDO -->
-    <section
-      id="continueWatchingSection"
-      class="catalog-section"
-      hidden
-    >
+      <div id="fullCategoryGrid" class="content-grid"></div>
 
+      <div class="load-more-container">
+        <button id="loadMoreCategoryButton" class="primary-button" type="button" hidden>
+          Mostrar mÃ¡s
+        </button>
+      </div>
+    </section>
+
+    <section id="continueWatchingSection" class="catalog-section" hidden>
       <div class="section-heading">
-
-        <h2>
-          Continuar viendo
-        </h2>
-
+        <h2>Continuar viendo</h2>
       </div>
-
-      <div
-        id="continueWatchingRow"
-        class="content-row"
-      ></div>
-
+      <div id="continueWatchingRow" class="content-row"></div>
     </section>
 
+    <div id="catalogSections"></div>
 
-    <!-- CONTENIDO DINÁMICO -->
-    <div id="catalogSections">
-
-      <!--
-        app.js agregará aquí las filas:
-
-        Estrenos
-        Superhéroes
-        Familia y animación
-        Terror
-        Documentales
-        Navidad
-        Series
-        TV en vivo
-      -->
-
-    </div>
-
-
-    <!-- MENSAJE SIN RESULTADOS -->
-    <section
-      id="emptyState"
-      class="empty-state"
-      hidden
-    >
-
-      <h2>
-        No encontramos resultados
-      </h2>
-
-      <p>
-        Prueba escribiendo otro título en el buscador.
-      </p>
-
+    <section id="emptyState" class="empty-state" hidden>
+      <h2>No encontramos resultados</h2>
+      <p>Prueba escribiendo otro tÃ­tulo.</p>
     </section>
-
   </main>
 
-
-  <!-- REPRODUCTOR -->
-  <div
-    id="playerModal"
-    class="modal"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="playerTitle"
-    hidden
-  >
-
+  <!-- Reproductor -->
+  <div id="playerModal" class="modal" role="dialog" aria-modal="true"
+       aria-labelledby="playerTitle" hidden>
     <div class="modal-backdrop"></div>
 
     <div class="player-dialog">
-
       <div class="video-container">
+        <button id="closePlayerButton" class="close-player-button"
+                type="button" aria-label="Cerrar reproductor">Ã—</button>
 
-        <button
-          id="closePlayerButton"
-          class="close-player-button"
-          type="button"
-          aria-label="Cerrar reproductor"
-        >
-          ×
-        </button>
-
-        <video
-          id="videoPlayer"
-          controls
-          playsinline
-          preload="metadata"
-        >
+        <video id="videoPlayer" controls playsinline preload="metadata">
           Tu navegador no es compatible con este video.
         </video>
 
-        <div
-          id="playerLoading"
-          class="player-loading"
-          hidden
-        >
-
+        <div id="playerLoading" class="player-loading" hidden>
           <div class="loading-spinner"></div>
-
-          <span>
-            Cargando reproducción...
-          </span>
-
+          <span id="playerLoadingText">Cargando reproducciÃ³n...</span>
         </div>
 
+        <div id="playerError" class="player-error" hidden>
+          <strong id="playerErrorTitle">No se pudo reproducir</strong>
+          <span id="playerErrorMessage"></span>
+          <button id="retryPlayerButton" class="primary-button" type="button">
+            Reintentar
+          </button>
+        </div>
       </div>
 
       <div class="player-information">
-
-        <h2 id="playerTitle">
-          Selecciona un contenido
-        </h2>
-
+        <h2 id="playerTitle">Selecciona una pelÃ­cula</h2>
         <p id="playerMetadata"></p>
-
         <p id="playerDescription"></p>
 
         <div class="player-actions">
-
-          <button
-            id="playerFavoriteButton"
-            class="secondary-button"
-            type="button"
-          >
-            Agregar a mi lista
+          <button id="playerFavoriteButton" class="secondary-button" type="button">
+            Agregar a Mi lista
           </button>
-
         </div>
-
       </div>
-
     </div>
-
   </div>
 
-
-  <!-- PANEL DE INFORMACIÓN -->
-  <div
-    id="informationModal"
-    class="modal"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="informationTitle"
-    hidden
-  >
-
+  <!-- InformaciÃ³n -->
+  <div id="informationModal" class="modal" role="dialog" aria-modal="true"
+       aria-labelledby="informationTitle" hidden>
     <div class="modal-backdrop"></div>
 
     <article class="information-dialog">
+      <button id="closeInformationButton" class="close-player-button"
+              type="button" aria-label="Cerrar informaciÃ³n">Ã—</button>
 
-      <button
-        id="closeInformationButton"
-        class="close-player-button"
-        type="button"
-        aria-label="Cerrar información"
-      >
-        ×
-      </button>
-
-      <div
-        id="informationBackground"
-        class="information-background"
-      ></div>
+      <div id="informationBackground" class="information-background"></div>
 
       <div class="information-content">
-
         <h2 id="informationTitle"></h2>
-
         <p id="informationMetadata"></p>
-
         <p id="informationDescription"></p>
 
         <div class="information-actions">
-
-          <button
-            id="informationPlayButton"
-            class="primary-button"
-            type="button"
-          >
+          <button id="informationPlayButton" class="primary-button" type="button">
             Reproducir
           </button>
-
-          <button
-            id="informationFavoriteButton"
-            class="secondary-button"
-            type="button"
-          >
+          <button id="informationFavoriteButton" class="secondary-button" type="button">
             Mi lista
           </button>
-
         </div>
-
       </div>
-
     </article>
-
   </div>
 
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <!-- NOTIFICACIONES PEQUEÑAS -->
-  <div
-    id="toast"
-    class="toast"
-    role="status"
-    aria-live="polite"
-  ></div>
-
-
-  <!-- NAVEGACIÓN INFERIOR PARA CELULARES -->
-  <nav
-    class="mobile-navigation"
-    aria-label="Navegación móvil"
-  >
-
-    <button
-      class="mobile-nav-button active"
-      type="button"
-      data-section="inicio"
-    >
-      <span class="mobile-nav-icon" aria-hidden="true">
-        ⌂
-      </span>
-
-      <span>
-        Inicio
-      </span>
+  <nav class="mobile-navigation" aria-label="NavegaciÃ³n mÃ³vil">
+    <button class="mobile-nav-button active" type="button" data-section="inicio">
+      <span class="mobile-nav-icon" aria-hidden="true">âŒ‚</span>
+      <span>Inicio</span>
     </button>
-
-    <button
-      class="mobile-nav-button"
-      type="button"
-      data-section="peliculas"
-    >
-      <span class="mobile-nav-icon" aria-hidden="true">
-        ▶
-      </span>
-
-      <span>
-        Películas
-      </span>
+    <button class="mobile-nav-button" type="button" data-section="peliculas">
+      <span class="mobile-nav-icon" aria-hidden="true">â–¶</span>
+      <span>PelÃ­culas</span>
     </button>
-
-    <button
-      class="mobile-nav-button"
-      type="button"
-      data-section="series"
-    >
-      <span class="mobile-nav-icon" aria-hidden="true">
-        ▣
-      </span>
-
-      <span>
-        Series
-      </span>
+    <button class="mobile-nav-button" type="button" data-section="estrenos">
+      <span class="mobile-nav-icon" aria-hidden="true">â˜…</span>
+      <span>Estrenos</span>
     </button>
-
-    <button
-      class="mobile-nav-button"
-      type="button"
-      data-section="tv"
-    >
-      <span class="mobile-nav-icon" aria-hidden="true">
-        ▤
-      </span>
-
-      <span>
-        TV
-      </span>
+    <button class="mobile-nav-button" type="button" data-section="favoritos">
+      <span class="mobile-nav-icon" aria-hidden="true">â™¥</span>
+      <span>Mi lista</span>
     </button>
-
-    <button
-      class="mobile-nav-button"
-      type="button"
-      data-section="favoritos"
-    >
-      <span class="mobile-nav-icon" aria-hidden="true">
-        ♥
-      </span>
-
-      <span>
-        Mi lista
-      </span>
-    </button>
-
   </nav>
 
-
-  <!-- EL CEREBRO DE LA APLICACIÓN -->
-  <script src="app.js?v=21" defer></script>
-
+  <script src="app.js?v=40" defer></script>
 </body>
-</html>
+  </html>

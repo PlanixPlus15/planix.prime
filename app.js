@@ -316,3 +316,322 @@ function createCatalogSection(section, items, total) {
   for (const content of items) {
     row.appendChild(createContentCard(content));
   }
+    sectionElement.append(heading, row);
+  elements.catalogSections.appendChild(sectionElement);
+}
+
+function openFullCategory(categoryId, title) {
+  if (!state.catalogReady) return;
+
+  state.fullCategory = {
+    id: categoryId,
+    title,
+    offset: 0,
+    total: 0,
+    loading: true
+  };
+
+  elements.fullCategoryTitle.textContent = title;
+  elements.fullCategoryCounter.textContent = "Cargando...";
+  elements.fullCategoryGrid.innerHTML = "";
+  elements.loadMoreCategoryButton.hidden = true;
+
+  elements.catalogSections.hidden = true;
+  elements.continueWatchingSection.hidden = true;
+  elements.searchResultsSection.hidden = true;
+  elements.fullCategorySection.hidden = false;
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+
+  requestFullCategoryPage();
+}
+
+function requestFullCategoryPage() {
+  if (!state.fullCategory.id || state.fullCategory.loading === false) return;
+
+  state.worker.postMessage({
+    type: "GET_CATEGORY",
+    category: state.fullCategory.id,
+    limit: PLANIX_CONFIG.categoryPageSize,
+    offset: state.fullCategory.offset
+  });
+}
+
+function appendFullCategoryResults(items, total, offset) {
+  for (const content of items) {
+    elements.fullCategoryGrid.appendChild(createContentCard(content));
+  }
+
+  state.fullCategory.total = Number(total || 0);
+  state.fullCategory.offset = offset + items.length;
+  state.fullCategory.loading = false;
+
+  elements.fullCategoryCounter.textContent =
+    `${state.fullCategory.total.toLocaleString("es-ES")} tÃ­tulos`;
+
+  elements.loadMoreCategoryButton.hidden =
+    state.fullCategory.offset >= state.fullCategory.total;
+}
+
+function closeFullCategory() {
+  state.fullCategory = {
+    id: "",
+    title: "",
+    offset: 0,
+    total: 0,
+    loading: false
+  };
+
+  elements.fullCategorySection.hidden = true;
+  elements.catalogSections.hidden = false;
+  renderContinueWatching();
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function loadMoreFullCategory() {
+  if (
+    !state.fullCategory.id ||
+    state.fullCategory.offset >= state.fullCategory.total ||
+    state.fullCategory.loading
+  ) {
+    return;
+  }
+
+  state.fullCategory.loading = true;
+  elements.loadMoreCategoryButton.disabled = true;
+  elements.loadMoreCategoryButton.textContent = "Cargando...";
+
+  state.worker.postMessage({
+    type: "GET_CATEGORY",
+    category: state.fullCategory.id,
+    limit: PLANIX_CONFIG.categoryPageSize,
+    offset: state.fullCategory.offset
+  });
+
+  window.setTimeout(() => {
+    elements.loadMoreCategoryButton.disabled = false;
+    elements.loadMoreCategoryButton.textContent = "Mostrar mÃ¡s";
+  }, 500);
+}
+
+function createContentCard(content, options = {}) {
+  const card = document.createElement("button");
+  card.type = "button";
+  card.className = "content-card";
+  card.dataset.contentId = content.id;
+
+  if (options.continueWatching) {
+    card.classList.add("continue-card");
+  }
+
+  const poster = document.createElement("div");
+  poster.className = "card-poster";
+
+  if (content.poster) {
+    const image = document.createElement("img");
+    image.className = "card-poster-image";
+    image.src = content.poster;
+    image.alt = content.title;
+    image.loading = "lazy";
+    image.addEventListener("error", () => image.remove());
+    poster.appendChild(image);
+  }
+
+  const fallback = document.createElement("div");
+  fallback.className = "card-poster-fallback";
+  fallback.textContent = content.title;
+  poster.appendChild(fallback);
+
+  const format = document.createElement("span");
+  format.className = "card-format";
+  format.textContent = content.format || "VIDEO";
+  poster.appendChild(format);
+
+  if (state.favorites.has(content.id)) {
+    const favorite = document.createElement("span");
+    favorite.className = "card-favorite";
+    favorite.textContent = "â™¥";
+    poster.appendChild(favorite);
+  }
+
+  const overlay = document.createElement("div");
+  overlay.className = "card-play-overlay";
+
+  const playIcon = document.createElement("span");
+  playIcon.className = "card-play-icon";
+  playIcon.textContent = "â–¶";
+
+  overlay.appendChild(playIcon);
+  poster.appendChild(overlay);
+
+  if (options.continueWatching) {
+    const progress = state.continueWatching[content.id];
+
+    if (progress && progress.duration > 0) {
+      const progressContainer = document.createElement("div");
+      progressContainer.className = "card-progress";
+
+      const progressValue = document.createElement("div");
+      progressValue.className = "card-progress-value";
+      progressValue.style.width =
+        `${Math.min(100, (progress.currentTime / progress.duration) * 100)}%`;
+
+      progressContainer.appendChild(progressValue);
+      poster.appendChild(progressContainer);
+    }
+  }
+
+  const title = document.createElement("div");
+  title.className = "card-title";
+  title.textContent = content.title;
+
+  const metadata = document.createElement("div");
+  metadata.className = "card-metadata";
+  metadata.textContent = [content.year, content.category]
+    .filter(Boolean)
+    .join(" Â· ");
+
+  card.append(poster, title, metadata);
+
+  card.addEventListener("click", () => openInformation(content));
+  card.addEventListener("mouseenter", () => setFeaturedContent(content));
+  card.addEventListener("focus", () => setFeaturedContent(content));
+
+  return card;
+}
+
+function setFeaturedContent(content) {
+  if (!content) return;
+
+  state.featuredContent = content;
+  elements.heroTitle.textContent = content.title;
+  elements.heroDescription.textContent =
+    content.description || "Disponible en Planix Prime.";
+  elements.heroYear.textContent = content.year || "CatÃ¡logo";
+  elements.heroCategory.textContent = content.category || "PelÃ­culas";
+
+  const image = content.background || content.poster || "";
+
+  if (image) {
+    elements.heroBackground.style.backgroundImage = `url("${image}")`;
+    elements.heroBackground.classList.add("visible");
+  } else {
+    elements.heroBackground.style.backgroundImage = "";
+    elements.heroBackground.classList.remove("visible");
+  }
+
+  elements.heroPlayButton.disabled = false;
+  elements.heroInfoButton.disabled = false;
+  elements.heroFavoriteButton.disabled = false;
+
+  updateFavoriteButtons(content);
+}
+
+/* =========================================================
+   REPRODUCTOR MULTIFORMATO
+   ========================================================= */
+
+async function openPlayer(content) {
+  if (!content?.url) {
+    showToast("Este contenido no tiene una URL vÃ¡lida.");
+    return;
+  }
+
+  state.selectedContent = content;
+  elements.playerTitle.textContent = content.title;
+  elements.playerMetadata.textContent = [
+    content.year,
+    content.category,
+    content.format
+  ].filter(Boolean).join(" Â· ");
+  elements.playerDescription.textContent =
+    content.description || "Disponible en Planix Prime.";
+
+  elements.playerModal.hidden = false;
+  document.body.classList.add("modal-open");
+
+  hidePlayerError();
+  showPlayerLoading("Preparando reproducciÃ³n...");
+  updateFavoriteButtons(content);
+
+  try {
+    await loadMedia(content);
+  } catch (error) {
+    console.error("Error de reproducciÃ³n:", error);
+    showPlayerErrorFor(content, error);
+  }
+}
+
+async function loadMedia(content) {
+  await destroyActivePlayers();
+
+  const url = content.url;
+  const format = detectPlaybackFormat(content);
+  const video = elements.videoPlayer;
+
+  video.removeAttribute("src");
+  video.load();
+
+  const savedProgress = state.continueWatching[content.id];
+
+  const restoreProgress = () => {
+    if (
+      savedProgress &&
+      savedProgress.currentTime > 0 &&
+      Number.isFinite(video.duration) &&
+      savedProgress.currentTime < video.duration - 15
+    ) {
+      video.currentTime = savedProgress.currentTime;
+    }
+  };
+
+  video.addEventListener("loadedmetadata", restoreProgress, { once: true });
+
+  if (format === "m3u8") {
+    await playHls(url);
+    return;
+  }
+
+  if (format === "mpd") {
+    await playDash(url);
+    return;
+  }
+
+  if (format === "ts" || format === "flv") {
+    await playMpegTs(url, format);
+    return;
+  }
+
+  await playNative(url);
+}
+
+function detectPlaybackFormat(content) {
+  const url = String(content.url || "").split("?")[0].toLowerCase();
+  const stated = String(content.format || "").toLowerCase();
+
+  if (url.endsWith(".m3u8") || stated === "m3u8") return "m3u8";
+  if (url.endsWith(".mpd") || stated === "mpd") return "mpd";
+  if (url.endsWith(".ts") || stated === "ts") return "ts";
+  if (url.endsWith(".flv") || stated === "flv") return "flv";
+  if (url.endsWith(".mkv") || stated === "mkv") return "mkv";
+  if (url.endsWith(".avi") || stated === "avi") return "avi";
+  if (url.endsWith(".webm") || stated === "webm") return "webm";
+  return "native";
+}
+
+async function playNative(url) {
+  const video = elements.videoPlayer;
+  video.src = url;
+
+  await new Promise((resolve, reject) => {
+    const onReady = () => {
+      cleanup();
+      resolve();
+    };
+
+    const onError = () => {
+      cleanup();
+      reject(new Error("NATIVE_MEDIA_ERROR"));
+    };
+
